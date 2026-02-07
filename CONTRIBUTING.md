@@ -80,10 +80,10 @@ refactor(ast): simplify expression enum variants
 
 ```bash
 # Clone the repository
-git clone https://github.com/saffron-lang/saffron.git
-cd saffron
+git clone https://github.com/duranitech/saffron.git
+cd saffron/saffron
 
-# Install Rust (if needed)
+# Install Rust 1.85+ (if needed)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Build

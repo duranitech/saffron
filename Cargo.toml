@@ -18,7 +18,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Saffron Contributors"]
 license = "Apache-2.0"
-repository = "https://github.com/saffron-lang/saffron"
+repository = "https://github.com/duranitech/saffron"
 description = "The Culinary Programming Language"
 rust-version = "1.85"
 
