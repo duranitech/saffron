@@ -18,7 +18,7 @@ pub struct Span {
 }
 
 /// Physical unit types — the core of Saffron's type safety
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Unit {
     // Temperature
     Celsius,
