@@ -291,7 +291,7 @@ pub enum Step {
     /// Sequential step: 1: Heat(pan, to: 180.celsius)
     Sequential {
         number: u32,
-        action: Expr,
+        action: Box<Expr>,
         output: Option<Destructure>,
         span: Span,
     },
@@ -307,7 +307,7 @@ pub enum Step {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SubStep {
     pub label: String,
-    pub action: Expr,
+    pub action: Box<Expr>,
     pub output: Option<Destructure>,
     pub span: Span,
 }

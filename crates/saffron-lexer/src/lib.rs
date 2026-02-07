@@ -546,7 +546,7 @@ impl<'src> Lexer<'src> {
     fn scan_number(&mut self, start_pos: usize) -> TokenKind {
         // First digit already consumed by advance() in scan_token.
         // Read remaining integer digits.
-        while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+        while self.peek().is_some_and(|c| c.is_ascii_digit()) {
             self.advance();
         }
 
@@ -559,9 +559,9 @@ impl<'src> Lexer<'src> {
                 .source
                 .get(self.pos + 1..)
                 .and_then(|s| s.chars().next());
-            if after_dot.map_or(false, |c| c.is_ascii_digit()) {
+            if after_dot.is_some_and(|c| c.is_ascii_digit()) {
                 self.advance(); // consume '.'
-                while self.peek().map_or(false, |c| c.is_ascii_digit()) {
+                while self.peek().is_some_and(|c| c.is_ascii_digit()) {
                     self.advance();
                 }
                 is_float = true;
@@ -679,7 +679,7 @@ impl<'src> Lexer<'src> {
             self.advance(); // consume third '/'
 
             // Check for 'ai:' immediately after ///
-            if self.source.get(self.pos..).map_or(false, |s| s.starts_with("ai:")) {
+            if self.source.get(self.pos..).is_some_and(|s| s.starts_with("ai:")) {
                 // Consume 'ai:'
                 self.advance(); // a
                 self.advance(); // i
@@ -724,7 +724,7 @@ impl<'src> Lexer<'src> {
 
     fn scan_identifier_or_keyword(&mut self, start_pos: usize) -> TokenKind {
         // First char already consumed. Read remaining identifier chars.
-        while self.peek().map_or(false, |c| c.is_alphanumeric() || c == '_') {
+        while self.peek().is_some_and(|c| c.is_alphanumeric() || c == '_') {
             self.advance();
         }
 
