@@ -1,0 +1,33 @@
+// INVALID: This recipe should produce error E1001
+// Reason: Mixing Celsius and Fahrenheit without explicit conversion.
+// Expected error: "Type mismatch: expected Celsius, found Fahrenheit"
+
+recipe TempMismatch {
+  @version("1.0.0")
+  @difficulty(Difficulty.Easy)
+  @servings(1)
+  @total_time(5.minutes)
+
+  ingredients {
+    egg: Egg(type: .Chicken, quantity: 1)
+    oil: SunflowerOil(volume: 50.ml)
+  }
+
+  equipment {
+    pan: FryingPan(diameter: 24.cm, material: .StainlessSteel)
+    stove: GasStove(power: 2000.watts)
+  }
+
+  steps {
+    1: Heat(pan, to: 356.fahrenheit, using: stove)  // Pan heated in Fahrenheit
+    2: Add(oil, to: pan)
+    3: WaitUntil(oil.state.temperature >= 180.celsius)  // ERROR: Comparing F with C
+    4: Crack(egg) -> [yolk, white]
+    5: Add([yolk, white], to: pan)
+    6: Fry(duration: 3.minutes, target: Doneness.Medium)
+  }
+
+  expected_result: FriedEgg {
+    whites: TextureState.Set
+  }
+}

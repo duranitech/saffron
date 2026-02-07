@@ -1,0 +1,50 @@
+{
+  "id": "chicken_egg",
+  "name": {
+    "en": "Chicken Egg",
+    "es": "Huevo de gallina",
+    "fr": "Oeuf de poule",
+    "zh": "鸡蛋",
+    "ja": "鶏卵"
+  },
+  "category": "protein",
+  "subcategory": "egg",
+  "composition": {
+    "water": 76.15,
+    "protein": 12.56,
+    "total_fat": 9.51,
+    "saturated_fat": 3.13,
+    "carbohydrates": 0.72,
+    "fiber": 0.0,
+    "sugar": 0.37,
+    "ph": 7.6,
+    "minerals": {
+      "calcium": 56.0,
+      "iron": 1.75,
+      "magnesium": 12.0,
+      "phosphorus": 198.0,
+      "potassium": 138.0,
+      "sodium": 142.0,
+      "zinc": 1.29
+    },
+    "vitamins": {
+      "vitamin_a": 0.16,
+      "vitamin_b12": 0.00089,
+      "vitamin_d": 0.002,
+      "vitamin_e": 1.05,
+      "riboflavin": 0.457,
+      "folate": 0.047
+    }
+  },
+  "physical": {
+    "density_g_per_ml": 1.031,
+    "boiling_point_celsius": 100.0,
+    "specific_heat_j_per_g_k": 3.18
+  },
+  "allergens": ["eggs"],
+  "substitutes": ["duck_egg", "quail_egg", "tofu_scramble"],
+  "sources": [
+    "USDA FoodData Central #171287",
+    "McGee, On Food and Cooking, 2004, Chapter 2"
+  ]
+}

@@ -1,0 +1,32 @@
+// INVALID: This recipe should produce error E2001
+// Reason: Water cannot undergo Process.Fry — it has no solid structure to fry.
+// Expected error: "Cannot apply Process.Fry to Ingredient.Water"
+
+recipe FryWater {
+  @version("1.0.0")
+  @difficulty(Difficulty.Easy)
+  @servings(1)
+  @total_time(5.minutes)
+
+  ingredients {
+    water: Water(volume: 200.ml)
+    oil: SunflowerOil(volume: 500.ml)
+  }
+
+  equipment {
+    pan: FryingPan(diameter: 24.cm, material: .StainlessSteel)
+    stove: GasStove(power: 2000.watts)
+  }
+
+  steps {
+    1: Heat(pan, to: 180.celsius, using: stove)
+    2: Add(oil, to: pan)
+    3: WaitUntil(oil.state.temperature >= 180.celsius)
+    4: Add(water, to: pan)
+    5: Fry(duration: 3.minutes, target: Doneness.Medium)  // ERROR: Cannot fry water
+  }
+
+  expected_result: FriedWater {
+    state: TextureState.Set
+  }
+}

@@ -1,0 +1,9 @@
+[package]
+name = "saffron-physics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Physical and chemical simulation engine for Saffron"
+
+[dependencies]
+serde = { workspace = true }

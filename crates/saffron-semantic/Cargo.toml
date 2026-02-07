@@ -1,0 +1,11 @@
+[package]
+name = "saffron-semantic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Semantic analyzer for domain-specific validation in Saffron"
+
+[dependencies]
+saffron-ast = { workspace = true }
+saffron-sid = { workspace = true }
+thiserror = { workspace = true }

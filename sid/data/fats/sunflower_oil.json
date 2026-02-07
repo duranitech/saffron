@@ -1,0 +1,39 @@
+{
+  "id": "sunflower_oil",
+  "name": {
+    "en": "Sunflower Oil",
+    "es": "Aceite de girasol",
+    "fr": "Huile de tournesol",
+    "zh": "葵花籽油",
+    "ja": "ひまわり油"
+  },
+  "category": "fat",
+  "subcategory": "vegetable_oil",
+  "composition": {
+    "water": 0.0,
+    "protein": 0.0,
+    "total_fat": 100.0,
+    "saturated_fat": 10.3,
+    "carbohydrates": 0.0,
+    "fiber": 0.0,
+    "sugar": 0.0,
+    "minerals": {},
+    "vitamins": {
+      "vitamin_e": 41.08,
+      "vitamin_k": 0.0054
+    }
+  },
+  "physical": {
+    "density_g_per_ml": 0.92,
+    "smoke_point_celsius": 232.0,
+    "flash_point_celsius": 316.0,
+    "boiling_point_celsius": 330.0,
+    "specific_heat_j_per_g_k": 1.93
+  },
+  "allergens": [],
+  "substitutes": ["canola_oil", "peanut_oil", "vegetable_oil"],
+  "sources": [
+    "USDA FoodData Central #171025",
+    "Engineering Toolbox - Smoke Points of Cooking Oils"
+  ]
+}

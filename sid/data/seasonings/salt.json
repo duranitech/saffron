@@ -1,0 +1,41 @@
+{
+  "id": "table_salt",
+  "name": {
+    "en": "Table Salt",
+    "es": "Sal de mesa",
+    "fr": "Sel de table",
+    "zh": "食盐",
+    "ja": "食塩"
+  },
+  "category": "seasoning",
+  "subcategory": "mineral",
+  "composition": {
+    "water": 0.2,
+    "protein": 0.0,
+    "total_fat": 0.0,
+    "saturated_fat": 0.0,
+    "carbohydrates": 0.0,
+    "fiber": 0.0,
+    "sugar": 0.0,
+    "minerals": {
+      "sodium": 38758.0,
+      "chloride": 59000.0,
+      "calcium": 24.0,
+      "potassium": 8.0,
+      "iron": 0.33
+    },
+    "vitamins": {}
+  },
+  "physical": {
+    "density_g_per_ml": 2.16,
+    "boiling_point_celsius": 1413.0,
+    "freezing_point_celsius": 801.0,
+    "specific_heat_j_per_g_k": 0.88
+  },
+  "allergens": [],
+  "substitutes": ["sea_salt", "kosher_salt", "himalayan_salt"],
+  "sources": [
+    "USDA FoodData Central #173468",
+    "CRC Handbook of Chemistry and Physics"
+  ]
+}

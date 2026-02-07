@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saffront.com/schemas/ingredient.schema.json",
+  "title": "Saffron Ingredient Database Schema",
+  "description": "Schema for ingredient entries in the Saffron Ingredient Database (SID)",
+  "type": "object",
+  "required": ["id", "name", "category", "composition", "physical", "allergens", "sources"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Unique identifier for the ingredient, lowercase with underscores"
+    },
+    "name": {
+      "type": "object",
+      "required": ["en"],
+      "properties": {
+        "en": {
+          "type": "string",
+          "description": "English name (required)"
+        },
+        "es": {
+          "type": "string",
+          "description": "Spanish name (optional)"
+        },
+        "fr": {
+          "type": "string",
+          "description": "French name (optional)"
+        },
+        "zh": {
+          "type": "string",
+          "description": "Chinese name (optional)"
+        },
+        "ja": {
+          "type": "string",
+          "description": "Japanese name (optional)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Multilingual name with English required"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["protein", "fat", "carbohydrate", "liquid", "seasoning", "produce", "dairy"],
+      "description": "Ingredient category classification"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Optional subcategory for further classification"
+    },
+    "composition": {
+      "type": "object",
+      "required": ["water", "protein", "total_fat", "saturated_fat", "carbohydrates", "fiber", "sugar"],
+      "properties": {
+        "water": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Water content percentage"
+        },
+        "protein": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Protein content percentage"
+        },
+        "total_fat": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Total fat content percentage"
+        },
+        "saturated_fat": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Saturated fat content percentage"
+        },
+        "carbohydrates": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Carbohydrate content percentage"
+        },
+        "fiber": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Dietary fiber content percentage"
+        },
+        "sugar": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Sugar content percentage"
+        },
+        "ph": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 14,
+          "description": "pH value (optional)"
+        },
+        "minerals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Mineral content in mg/100g or appropriate units"
+        },
+        "vitamins": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Vitamin content in mg/100g or appropriate units"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Nutritional composition"
+    },
+    "physical": {
+      "type": "object",
+      "properties": {
+        "density_g_per_ml": {
+          "type": "number",
+          "description": "Density in g/ml (optional)"
+        },
+        "boiling_point_celsius": {
+          "type": "number",
+          "description": "Boiling point in Celsius (optional)"
+        },
+        "freezing_point_celsius": {
+          "type": "number",
+          "description": "Freezing point in Celsius (optional)"
+        },
+        "smoke_point_celsius": {
+          "type": "number",
+          "description": "Smoke point in Celsius (optional)"
+        },
+        "flash_point_celsius": {
+          "type": "number",
+          "description": "Flash point in Celsius (optional)"
+        },
+        "specific_heat_j_per_g_k": {
+          "type": "number",
+          "description": "Specific heat capacity in J/(g·K) (optional)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Physical properties"
+    },
+    "allergens": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of allergen identifiers"
+    },
+    "substitutes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of ingredient IDs that can substitute this ingredient"
+    },
+    "seasonal_availability": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of months (Jan, Feb, etc.) when ingredient is seasonally available (optional)"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Array of citations and sources for the data"
+    }
+  },
+  "additionalProperties": false
+}

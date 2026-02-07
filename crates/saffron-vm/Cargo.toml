@@ -1,0 +1,12 @@
+[package]
+name = "saffron-vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Virtual machine and runtime for executing Saffron bytecode"
+
+[dependencies]
+saffron-ast = { workspace = true }
+saffron-physics = { workspace = true }
+saffron-sid = { workspace = true }
+thiserror = { workspace = true }

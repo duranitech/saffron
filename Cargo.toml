@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/saffron-lexer",
+    "crates/saffron-parser",
+    "crates/saffron-ast",
+    "crates/saffron-typeck",
+    "crates/saffron-semantic",
+    "crates/saffron-codegen",
+    "crates/saffron-vm",
+    "crates/saffron-physics",
+    "crates/saffron-sid",
+    "crates/saffron-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Saffron Contributors"]
+license = "Apache-2.0"
+repository = "https://github.com/saffron-lang/saffron"
+description = "The Culinary Programming Language"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Shared dependencies across crates
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Internal crate dependencies
+saffron-ast = { path = "crates/saffron-ast" }
+saffron-lexer = { path = "crates/saffron-lexer" }
+saffron-parser = { path = "crates/saffron-parser" }
+saffron-typeck = { path = "crates/saffron-typeck" }
+saffron-semantic = { path = "crates/saffron-semantic" }
+saffron-codegen = { path = "crates/saffron-codegen" }
+saffron-vm = { path = "crates/saffron-vm" }
+saffron-physics = { path = "crates/saffron-physics" }
+saffron-sid = { path = "crates/saffron-sid" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

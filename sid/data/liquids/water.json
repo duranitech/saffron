@@ -1,0 +1,40 @@
+{
+  "id": "water",
+  "name": {
+    "en": "Water",
+    "es": "Agua",
+    "fr": "Eau",
+    "zh": "水",
+    "ja": "水"
+  },
+  "category": "liquid",
+  "subcategory": "base_liquid",
+  "composition": {
+    "water": 100.0,
+    "protein": 0.0,
+    "total_fat": 0.0,
+    "saturated_fat": 0.0,
+    "carbohydrates": 0.0,
+    "fiber": 0.0,
+    "sugar": 0.0,
+    "minerals": {
+      "calcium": 3.0,
+      "magnesium": 1.0,
+      "sodium": 4.0,
+      "potassium": 0.0
+    },
+    "vitamins": {}
+  },
+  "physical": {
+    "density_g_per_ml": 1.0,
+    "boiling_point_celsius": 100.0,
+    "freezing_point_celsius": 0.0,
+    "specific_heat_j_per_g_k": 4.186
+  },
+  "allergens": [],
+  "substitutes": ["mineral_water", "filtered_water"],
+  "sources": [
+    "CRC Handbook of Chemistry and Physics",
+    "USDA FoodData Central #174158"
+  ]
+}

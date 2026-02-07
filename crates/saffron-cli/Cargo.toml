@@ -1,0 +1,24 @@
+[package]
+name = "saffron-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command-line interface for the Saffron programming language"
+
+[[bin]]
+name = "saffron"
+path = "src/main.rs"
+
+[dependencies]
+saffron-ast = { workspace = true }
+saffron-lexer = { workspace = true }
+saffron-parser = { workspace = true }
+saffron-typeck = { workspace = true }
+saffron-semantic = { workspace = true }
+saffron-codegen = { workspace = true }
+saffron-vm = { workspace = true }
+saffron-sid = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { version = "4.0", features = ["derive"] }

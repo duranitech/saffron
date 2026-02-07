@@ -1,0 +1,41 @@
+// Saffron Recipe: Boiled Pasta
+// A fundamental recipe demonstrating liquid-based cooking processes.
+
+recipe BoiledPasta {
+  @version("1.0.0")
+  @author("saffron-community")
+  @difficulty(Difficulty.Easy)
+  @servings(2)
+  @total_time(15.minutes)
+  @cuisine(Cuisine.Italian)
+
+  ingredients {
+    pasta: Pasta(type: .Spaghetti, mass: 200.grams)
+    water: Water(volume: 2.liters)
+    salt: Salt(mass: 15.grams)
+  }
+
+  equipment {
+    pot: Pot(capacity: 4.liters, material: .StainlessSteel)
+    stove: GasStove(power: 3000.watts)
+    colander: Colander()
+  }
+
+  steps {
+    1: Add(water, to: pot)
+    2: Heat(pot, to: 100.celsius, using: stove)
+    3: WaitUntil(water.state.phase == Phase.Liquid)
+    4: Add(salt, to: pot)
+    5: Add(pasta, to: pot)
+    6: Boil(duration: 9.minutes, lid: false)
+    7: Drain(pot, using: colander) -> [pasta_drained, cooking_water]
+  }
+
+  expected_result: BoiledPasta {
+    texture: TextureState.AlDente,
+    temperature: 85.celsius,
+    seasoning: SeasoningLevel.Salted
+  }
+
+  nutrition: auto
+}

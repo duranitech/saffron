@@ -1,0 +1,44 @@
+// Saffron Recipe: Fried Egg
+// The canonical example recipe for the Saffron programming language.
+// This file is used as the primary test fixture for compiler validation.
+
+recipe FriedEgg {
+  @version("1.0.0")
+  @author("saffron-community")
+  @difficulty(Difficulty.Easy)
+  @servings(1)
+  @total_time(5.minutes)
+  @cuisine(Cuisine.Universal)
+
+  ingredients {
+    egg: Egg(type: .Chicken, quantity: 1)
+    oil: SunflowerOil(volume: 50.ml)
+    salt: Salt(mass: 2.grams)
+  }
+
+  equipment {
+    pan: FryingPan(diameter: 24.cm, material: .StainlessSteel)
+    stove: GasStove(power: 2000.watts)
+    spatula: Spatula(material: .Silicone)
+  }
+
+  steps {
+    1: Heat(pan, to: 180.celsius, using: stove)
+    2: Add(oil, to: pan)
+    3: WaitUntil(oil.state.temperature >= 170.celsius)
+    4: Crack(egg) -> [yolk, white]
+    5: Add([yolk, white], to: pan)
+    6: Season(salt, on: [yolk, white])
+    7: Fry(duration: 3.minutes, target: Doneness.Medium)
+    8: Remove([yolk, white], from: pan, using: spatula)
+  }
+
+  expected_result: FriedEgg {
+    whites: TextureState.Set,
+    yolk: TextureState.Runny,
+    browning: BrowningLevel.Light,
+    seasoning: SeasoningLevel.LightlySalted
+  }
+
+  nutrition: auto
+}

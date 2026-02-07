@@ -1,0 +1,45 @@
+// Saffron Recipe: Grilled Steak
+// Demonstrates protein cooking with precise temperature control.
+
+recipe GrilledSteak {
+  @version("1.0.0")
+  @author("saffron-community")
+  @difficulty(Difficulty.Medium)
+  @servings(1)
+  @total_time(25.minutes)
+  @cuisine(Cuisine.Universal)
+
+  ingredients {
+    steak: Beef(cut: .Ribeye, mass: 300.grams, thickness: 2.5.cm)
+    salt: Salt(mass: 5.grams)
+    pepper: BlackPepper(mass: 2.grams)
+    oil: OliveOil(volume: 15.ml)
+  }
+
+  equipment {
+    grill: Grill(type: .Charcoal)
+    thermometer: Thermometer(type: .Instant)
+    tongs: Tongs(material: .StainlessSteel)
+  }
+
+  steps {
+    1: Season(salt, on: steak)
+    2: Season(pepper, on: steak)
+    3: Rest(steak, duration: 20.minutes)
+    4: Heat(grill, to: 230.celsius, using: grill)
+    5: Add(oil, to: steak)
+    6: Add(steak, to: grill)
+    7: Grill(duration: 4.minutes, target: Doneness.MediumRare)
+    8: Remove(steak, from: grill, using: tongs)
+    9: Rest(steak, duration: 5.minutes)
+  }
+
+  expected_result: GrilledSteak {
+    doneness: Doneness.MediumRare,
+    internal_temp: 57.celsius,
+    crust: BrowningLevel.Dark,
+    seasoning: SeasoningLevel.WellSeasoned
+  }
+
+  nutrition: auto
+}

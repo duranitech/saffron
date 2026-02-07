@@ -1,0 +1,46 @@
+{
+  "id": "chicken_breast",
+  "name": {
+    "en": "Chicken Breast",
+    "es": "Pechuga de pollo",
+    "fr": "Blanc de poulet",
+    "zh": "鸡胸肉",
+    "ja": "鶏むね肉"
+  },
+  "category": "protein",
+  "subcategory": "poultry",
+  "composition": {
+    "water": 73.0,
+    "protein": 23.09,
+    "total_fat": 1.24,
+    "saturated_fat": 0.33,
+    "carbohydrates": 0.0,
+    "fiber": 0.0,
+    "sugar": 0.0,
+    "ph": 6.0,
+    "minerals": {
+      "calcium": 5.0,
+      "iron": 0.37,
+      "magnesium": 28.0,
+      "phosphorus": 228.0,
+      "potassium": 507.0,
+      "sodium": 45.0,
+      "zinc": 0.68
+    },
+    "vitamins": {
+      "vitamin_b6": 0.85,
+      "vitamin_b12": 0.00034,
+      "niacin": 12.35,
+      "riboflavin": 0.085
+    }
+  },
+  "physical": {
+    "density_g_per_ml": 1.04,
+    "specific_heat_j_per_g_k": 3.22
+  },
+  "allergens": [],
+  "substitutes": ["turkey_breast", "tofu", "chicken_thigh"],
+  "sources": [
+    "USDA FoodData Central #171077"
+  ]
+}

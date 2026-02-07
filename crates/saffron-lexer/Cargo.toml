@@ -1,0 +1,10 @@
+[package]
+name = "saffron-lexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lexer/tokenizer for the Saffron programming language"
+
+[dependencies]
+saffron-ast = { workspace = true }
+thiserror = { workspace = true }
