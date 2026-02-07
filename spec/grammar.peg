@@ -1,0 +1,839 @@
+# ==================================================================
+# Saffron Language Grammar — PEG Specification v0.1.0
+# ==================================================================
+#
+# Formal Parsing Expression Grammar (Ford, 2004) for the Saffron
+# culinary programming language.
+#
+# Notation:
+#   e1 e2       Sequence
+#   e1 / e2     Ordered choice (try e1 first; if it fails, try e2)
+#   e*          Zero or more (greedy)
+#   e+          One or more (greedy)
+#   e?          Optional
+#   &e          Positive lookahead (match without consuming)
+#   !e          Negative lookahead (succeed if e fails, consume nothing)
+#   'literal'   Literal string
+#   [a-z]       Character class
+#   .           Any character
+#   <-          Rule definition
+#
+# Conventions:
+#   - UPPER_SNAKE rules are lexical (raw tokens, no spacing)
+#   - PascalCase rules are syntactic (consume trailing Spacing)
+#   - Rules ending in _ are token helpers
+#
+# Property: PEG is unambiguous by construction — ordered choice
+# guarantees exactly one parse for any valid input. This is a
+# deliberate design choice for AI-first ergonomics: an LLM can
+# generate Saffron code knowing there is exactly one correct
+# structural interpretation.
+#
+# Implementation note: This grammar maps directly to a hand-written
+# recursive descent parser. Each rule becomes a parse function.
+# PEG ordered choice maps to try/backtrack logic. The lexer
+# (saffron-lexer) tokenizes first; the parser operates on tokens.
+# For clarity, this spec defines the grammar over characters.
+#
+# ==================================================================
+#
+# AI GENERATION GUIDELINES
+# ========================
+# For LLMs generating Saffron code:
+#
+#  1. Block order is strict:
+#     annotations → ingredients → equipment → steps →
+#     expected_result → nutrition
+#
+#  2. Identifier casing is enforced:
+#     PascalCase = type/process, snake_case = value, SCREAMING = constant
+#
+#  3. Argument order: positional args before named args.
+#     The grammar accepts any order (MixedArgList), but semantic
+#     analysis enforces positional-then-named. Generators MUST
+#     follow this convention.
+#
+#  4. Prefer the `%` shorthand (76%) over 76.percent — both parse
+#     to the same AST node, but 76% is the canonical form.
+#
+#  5. Process names are from a closed set of 56 types (see §17).
+#     Generation must validate against ProcessType enum.
+#
+#  6. Unit suffixes are a closed set. Never invent units.
+#     No spaces allowed in unit literals: 180.celsius (not 180 . celsius).
+#
+#  7. All ingredients and equipment must be declared before use
+#     in steps. Steps reference declarations by snake_case name.
+#
+#  8. Destructuring bindings (-> [a, b]) are in scope from
+#     that step through the rest of the recipe.
+#
+#  9. Enum variants: use shorthand (.Chicken) in named arguments
+#     where the type is inferrable. Use qualified form
+#     (Doneness.Medium) in expected_result properties and
+#     annotations.
+#
+# 10. ///ai: hints are first-class metadata — use them to embed
+#     structured guidance for AI reasoning.
+#
+# 11. Annotations use @snake_case(value) syntax only.
+#     AnnotationValue does NOT accept EnumVariant shorthand
+#     (.Easy) — use the qualified form (Difficulty.Easy).
+#
+# ==================================================================
+
+
+# ==================================================================
+# 1. PROGRAM STRUCTURE
+# ==================================================================
+
+Program         <- Spacing TopLevelDecl* EOF
+TopLevelDecl    <- ImportDecl / RecipeDecl / FnDecl / TypeDecl
+
+
+# ==================================================================
+# 2. IMPORT DECLARATIONS
+# ==================================================================
+
+ImportDecl      <- IMPORT_ ImportPath (FROM_ StringLiteral)? SEMI?
+ImportPath      <- PASCAL ('.' PASCAL)* Spacing
+
+
+# ==================================================================
+# 3. RECIPE DECLARATION
+#
+# The core top-level construct. A recipe declares ingredients,
+# equipment, a sequence of process steps, and an expected result.
+#
+# Block order is fixed (canonical form):
+#   annotations → ingredients → equipment → steps →
+#   expected_result → nutrition
+#
+# AI design rationale: Fixed order means an LLM always generates
+# the same structure. No permutation ambiguity.
+# ==================================================================
+
+RecipeDecl      <- RECIPE_ PascalIdent LBRACE
+                     Annotation*
+                     IngredientsBlock?
+                     EquipmentBlock?
+                     StepsBlock
+                     ExpectedResultDecl?
+                     NutritionDecl?
+                   RBRACE
+
+# ------------------------------------------------------------------
+# 3.1 Annotations
+#
+# Structured metadata attached to a recipe or function.
+# Always @snake_case(value). Value types are restricted to
+# literals and enum paths for static analyzability.
+#
+# Examples:
+#   @version("1.0.0")
+#   @difficulty(Difficulty.Easy)
+#   @servings(1)
+#   @total_time(5.minutes)
+#   @cuisine(Cuisine.Italian)
+# ------------------------------------------------------------------
+
+# Annotation names are always snake_case.
+# NOTE: AnnotationValue intentionally excludes EnumVariant shorthand
+# (.Easy). Use the qualified form: @difficulty(Difficulty.Easy).
+# This ensures annotations are self-contained (no type inference needed).
+Annotation      <- AT SnakeIdent LPAREN AnnotationValue RPAREN Spacing
+AnnotationValue <- EnumPath
+                 / PercentLiteral
+                 / UnitLiteral
+                 / StringLiteral
+                 / NumericLiteral
+                 / BoolLiteral
+
+
+# ==================================================================
+# 4. INGREDIENTS BLOCK
+#
+# Declares all ingredients used in the recipe with types and
+# physical properties. Each declaration binds a snake_case name
+# to a typed construction.
+#
+# Example:
+#   ingredients {
+#     egg: Egg(type: .Chicken, quantity: 1)
+#     oil: SunflowerOil(volume: 50.ml)
+#   }
+# ==================================================================
+
+IngredientsBlock <- INGREDIENTS_ LBRACE ItemDecl* RBRACE
+ItemDecl         <- SnakeIdent COLON CallExpr
+
+
+# ==================================================================
+# 5. EQUIPMENT BLOCK
+#
+# Declares cooking equipment with types and specifications.
+# Same syntax as ingredients block.
+#
+# Example:
+#   equipment {
+#     pan: FryingPan(diameter: 24.cm, material: .StainlessSteel)
+#     stove: GasStove(power: 2000.watts)
+#     colander: Colander()
+#   }
+# ==================================================================
+
+EquipmentBlock  <- EQUIPMENT_ LBRACE ItemDecl* RBRACE
+
+
+# ==================================================================
+# 6. STEPS BLOCK
+#
+# Ordered sequence of culinary process steps. Each step has an
+# explicit integer index (1-based), a process call expression,
+# and an optional destructuring output.
+#
+# Step numbering is explicit — no implicit ordering. This aids
+# AI generation (the model can reference steps by number) and
+# eliminates insertion ambiguity.
+#
+# Example:
+#   steps {
+#     1: Heat(pan, to: 180.celsius, using: stove)
+#     2: Add(oil, to: pan)
+#     3: WaitUntil(oil.state.temperature >= 170.celsius)
+#     4: Crack(egg) -> [yolk, white]
+#     5: Add([yolk, white], to: pan)
+#   }
+# ==================================================================
+
+StepsBlock      <- STEPS_ LBRACE Step* RBRACE
+
+Step            <- ParallelStep
+                 / SequentialStep
+
+SequentialStep  <- StepNumber COLON Expr Destructure? Spacing
+
+ParallelStep    <- StepNumber COLON PARALLEL_ LBRACE
+                     SubStep+
+                   RBRACE
+
+SubStep         <- SnakeIdent COLON Expr Destructure? Spacing
+
+StepNumber      <- INTEGER Spacing
+
+# Destructuring binds process outputs to named variables.
+# Example: Crack(egg) -> [yolk, white]
+# Example: Drain(pot, using: colander) -> [pasta_drained, cooking_water]
+
+Destructure     <- ARROW LBRACKET
+                     SnakeIdent (COMMA SnakeIdent)*
+                   RBRACKET
+
+
+# ==================================================================
+# 7. EXPECTED RESULT
+#
+# Declares the expected outcome of the recipe as a typed object
+# with property assertions. Used for validation and testing.
+#
+# Properties are comma-separated (with optional trailing comma).
+#
+# Example:
+#   expected_result: FriedEgg {
+#     whites: TextureState.Set,
+#     yolk: TextureState.Runny,
+#     browning: BrowningLevel.Light,
+#     seasoning: SeasoningLevel.LightlySalted
+#   }
+# ==================================================================
+
+# Property list is optional — an empty block is valid for recipes
+# where the expected result type alone is sufficient.
+# Example: expected_result: BoiledWater {}
+ExpectedResultDecl <- EXPECTED_RESULT_ COLON PascalIdent LBRACE
+                        (PropertyAssign (COMMA PropertyAssign)* COMMA?)?
+                      RBRACE
+
+PropertyAssign     <- SnakeIdent COLON Expr
+
+
+# ==================================================================
+# 8. NUTRITION DECLARATION
+#
+# Either `auto` (computed from SID) or a manual override block.
+#
+# Example:
+#   nutrition: auto
+# ==================================================================
+
+NutritionDecl   <- NUTRITION_ COLON (AUTO / NutritionBlock) Spacing
+
+NutritionBlock  <- LBRACE
+                     (PropertyAssign (COMMA PropertyAssign)* COMMA?)?
+                   RBRACE
+
+AUTO            <- 'auto' !ID_CHAR Spacing
+
+
+# ==================================================================
+# 9. EXPRESSIONS
+#
+# Expression grammar with the following precedence (lowest to highest):
+#   1. Comparison      (==, !=, <, <=, >, >=)
+#   2. Chain           (field access: a.b.c)
+#   3. Primary         (literals, calls, identifiers)
+#
+# AI design note: Expression grammar is intentionally shallow.
+# Deep nesting and complex operator precedence hinder AI generation
+# accuracy. Saffron uses named arguments and explicit structure
+# instead of expression complexity.
+# ==================================================================
+
+Expr            <- Comparison
+
+Comparison      <- UnaryExpr (CompOp UnaryExpr)?
+
+# Unary minus for negative values (e.g., -18.celsius for freezer temps).
+# Only MINUS is supported — no unary plus or other prefix operators.
+# AI design note: unary operators are limited to minus to keep
+# expression trees shallow and predictable.
+UnaryExpr       <- MINUS? ChainExpr
+
+CompOp          <- GREATER_EQ / LESS_EQ / EQUAL_EQ / NOT_EQ
+                 / GREATER / LESS
+
+# Chain expression handles both field access (oil.state.temperature)
+# and qualified enum paths (Doneness.Medium, TextureState.Set).
+#
+# Disambiguation: If the chain starts with PascalCase and all
+# segments are PascalCase, it's an enum path. If it starts with
+# snake_case, it's field access. Mixed chains are resolved during
+# semantic analysis.
+
+ChainExpr       <- PrimaryExpr (DOT Identifier_)*
+
+# Primary expressions — ordered by parse priority.
+#
+# CRITICAL: UnitLiteral MUST come before NumericLiteral.
+# PEG ordered choice ensures 180.celsius is parsed as UnitLiteral,
+# not as NumericLiteral(180) + FieldAccess(.celsius).
+
+PrimaryExpr     <- PercentLiteral
+                 / UnitLiteral
+                 / NumericLiteral
+                 / StringLiteral
+                 / BoolLiteral
+                 / ArrayLiteral
+                 / CallExpr
+                 / EnumVariant
+                 / Identifier_
+                 / LPAREN Expr RPAREN
+
+
+# ==================================================================
+# 10. CALL EXPRESSIONS
+#
+# Unified syntax for both ProcessCall and Construction:
+#   PascalIdent '(' ArgList? ')'
+#
+# The parser produces the same AST node shape. Semantic analysis
+# distinguishes process calls (when name matches a ProcessType)
+# from constructions (all other PascalCase identifiers).
+#
+# Argument rules:
+#   - Positional arguments come before named arguments
+#   - Named arguments use snake_case: syntax
+#   - An AI generating code should prefer named arguments for
+#     clarity (except for the primary target of a process)
+#
+# Examples:
+#   Egg(type: .Chicken, quantity: 1)             — all named (Construction)
+#   Heat(pan, to: 180.celsius, using: stove)     — mixed (ProcessCall)
+#   Fry(duration: 3.minutes, target: Doneness.Medium)  — all named
+#   Colander()                                   — no args
+#   WaitUntil(oil.state.temperature >= 170.celsius)    — single positional
+# ==================================================================
+
+CallExpr        <- PascalIdent LPAREN ArgList? RPAREN
+
+# ArgList: try all-named first (PEG ordered choice).
+# If the first argument isn't followed by ':', fall through to mixed.
+#
+# This ordering is critical: for Fry(duration: 3.minutes), NamedArgList
+# matches immediately. For Heat(pan, to: ...), NamedArgList fails
+# (pan is not followed by :), and MixedArgList handles it.
+
+ArgList         <- NamedArgList
+                 / MixedArgList
+
+NamedArgList    <- NamedArg (COMMA NamedArg)*
+
+# SEMANTIC CONSTRAINT: Once a NamedArg appears in MixedArgList,
+# all subsequent arguments MUST be NamedArg (no positional after named).
+# The grammar accepts any order; the semantic analyzer enforces this.
+# This is by design: grammar-level enforcement would require a
+# context-sensitive rule, which PEG cannot express.
+MixedArgList    <- Expr (COMMA Arg)*
+
+Arg             <- NamedArg / Expr
+
+NamedArg        <- SnakeIdent COLON Expr
+
+
+# ==================================================================
+# 11. LITERALS
+# ==================================================================
+
+# --- Unit Literal ---
+# A numeric value with a physical unit suffix.
+# The number can be integer or float. The dot between number
+# and unit is syntactic (not the decimal point).
+#
+# Parsing: Number consumes the numeric part (greedy: float before int).
+# Then '.' + UnitSuffix + !ID_CHAR ensures the suffix is complete.
+#
+# Examples: 180.celsius, 50.ml, 2.5.cm, 3.minutes, 2000.watts
+#
+# Edge case: 2.5.cm → Number=2.5 (float), '.', UnitSuffix=cm
+#           180.celsius → Number=180 (int, because 180.c fails float),
+#                         '.', UnitSuffix=celsius
+
+UnitLiteral     <- NUMBER '.' UNIT_SUFFIX !ID_CHAR Spacing
+
+# --- Percent Literal ---
+# Shorthand for percentage values: NUMBER '%'
+# This is an alternative to 76.percent (unit literal form).
+# Both forms produce the same AST node (PercentLiteral).
+# CANONICAL FORM: 76% (shorthand) is preferred for AI generation.
+# 76.percent is accepted but not the canonical output form.
+#
+# PercentLiteral MUST come before UnitLiteral in PrimaryExpr to
+# prevent 76% from being partially consumed as NUMBER(76).
+
+PercentLiteral  <- NUMBER '%' Spacing
+
+# --- Numeric Literal ---
+# A plain number (integer or float) without a unit.
+# The negative lookahead prevents matching the number portion of
+# a unit literal.
+#
+# Examples: 42, 3.14, 1, 0
+
+NumericLiteral  <- NUMBER !('.' UNIT_SUFFIX) Spacing
+
+# --- Number ---
+# Float is tried before Integer (greedy: 3.14 is a float, not int 3).
+# For 180.celsius: float tries 180.c → fails (no digits after dot),
+# backtracks, integer matches 180.
+
+NUMBER          <- FLOAT / INTEGER
+FLOAT           <- [0-9]+ '.' [0-9]+
+INTEGER         <- [0-9]+
+
+# --- String Literal ---
+# Double-quoted with standard escape sequences.
+
+StringLiteral   <- '"' STRING_CHAR* '"' Spacing
+STRING_CHAR     <- '\\' ["\\/bfnrt]
+                 / '\\u' HEX HEX HEX HEX
+                 / !'"' !'\\' .
+HEX             <- [0-9a-fA-F]
+
+# --- Boolean Literal ---
+
+BoolLiteral     <- ('true' / 'false') !ID_CHAR Spacing
+
+# --- Array Literal ---
+# Square-bracketed, comma-separated expressions.
+# Examples: [yolk, white], [pasta_drained, cooking_water]
+
+ArrayLiteral    <- LBRACKET Expr (COMMA Expr)* RBRACKET
+                 / LBRACKET RBRACKET
+
+
+# ==================================================================
+# 12. IDENTIFIERS
+#
+# Saffron enforces identifier casing at the grammar level:
+#
+#   PascalCase  → Type names, process names, enum types
+#                 Examples: Egg, FryingPan, Heat, Doneness
+#
+#   snake_case  → Variables, parameters, properties, annotations
+#                 Examples: egg, my_pan, oil_temp, total_time
+#
+#   SCREAMING_CASE → Constants
+#                 Examples: MAX_TEMP, DEFAULT_SERVINGS
+#
+# AI design rationale: Enforced casing eliminates naming ambiguity.
+# An LLM always knows: PascalCase = type/process, snake_case = value.
+# ==================================================================
+
+PascalIdent     <- PASCAL Spacing
+SnakeIdent      <- SNAKE Spacing
+ScreamIdent     <- SCREAM Spacing
+
+# Generic identifier (any casing)
+# ORDERING: SCREAM before PASCAL — PASCAL's [A-Z][a-zA-Z0-9]*
+# would partially match SCREAMING identifiers like MAX_TEMP
+# (consuming only "MAX" and leaving "_TEMP" unparsed).
+# SCREAM requires [A-Z][A-Z0-9_][A-Z0-9_]+ so it must be tried first.
+Identifier_     <- (SCREAM / PASCAL / SNAKE) Spacing
+
+# Enum variant shorthand: .PascalCase
+# Inferred enum type from context.
+# Examples: .Chicken, .StainlessSteel, .Silicone, .Spaghetti
+
+EnumVariant     <- '.' PASCAL Spacing
+
+# Qualified enum path: EnumType.Variant
+# Examples: Doneness.Medium, Phase.Liquid, TextureState.Set
+# Note: This is handled by ChainExpr (PascalIdent.PascalIdent chain).
+# The grammar doesn't need a separate rule; semantic analysis
+# determines if a chain is an enum path or field access.
+
+# Enum path used specifically in annotations
+EnumPath        <- PASCAL '.' PASCAL Spacing
+
+
+# ==================================================================
+# 13. FUNCTION DECLARATIONS (Phase 2+)
+#
+# Helper functions for reusable recipe logic.
+# Reserved for future implementation.
+#
+# Example (planned):
+#   fn temper_chocolate(chocolate: Chocolate, target: Temperature) -> ChocolateState {
+#     let melted = Heat(chocolate, to: 50.celsius)
+#     let cooled = Cool(melted, to: 27.celsius)
+#     return Heat(cooled, to: 31.celsius)
+#   }
+# ==================================================================
+
+FnDecl          <- FN_ SnakeIdent LPAREN ParamList? RPAREN
+                   (ARROW TypeRef)?
+                   LBRACE FnBody RBRACE
+
+ParamList       <- TypedParam (COMMA TypedParam)*
+TypedParam      <- SnakeIdent COLON TypeRef
+TypeRef         <- PASCAL (LANGLE TypeRef (COMMA TypeRef)* RANGLE)? Spacing
+
+FnBody          <- Statement*
+
+Statement       <- LetStmt
+                 / ReturnStmt
+                 / IfStmt
+                 / MatchStmt
+                 / ForStmt
+                 / WhileStmt
+                 / ExprStmt
+
+LetStmt         <- (LET / CONST) MUT? SnakeIdent (COLON TypeRef)? ASSIGN Expr Spacing
+ReturnStmt      <- RETURN_ Expr Spacing
+IfStmt          <- IF_ Expr LBRACE Statement* RBRACE (ELSE_ LBRACE Statement* RBRACE)?
+MatchStmt       <- MATCH_ Expr LBRACE MatchArm* RBRACE
+MatchArm        <- Pattern ARROW Expr Spacing
+Pattern         <- EnumVariant / NumericLiteral / StringLiteral / BoolLiteral / SnakeIdent
+ForStmt         <- FOR_ SnakeIdent IN_ Expr LBRACE Statement* RBRACE
+WhileStmt       <- WHILE_ Expr LBRACE Statement* RBRACE
+ExprStmt        <- Expr Spacing
+
+
+# ==================================================================
+# 14. TYPE DECLARATIONS (Phase 2+)
+#
+# Custom ingredient, equipment, or process types.
+# Reserved for future implementation.
+# ==================================================================
+
+TypeDecl        <- ClassDecl / InterfaceDecl / TraitDecl
+
+ClassDecl       <- ABSTRACT? CLASS_ PascalIdent
+                   (EXTENDS_ TypeRef)?
+                   (IMPLEMENTS_ TypeRef (COMMA TypeRef)*)?
+                   LBRACE MemberDecl* RBRACE
+
+InterfaceDecl   <- INTERFACE_ PascalIdent LBRACE MemberDecl* RBRACE
+
+TraitDecl       <- TRAIT_ PascalIdent LBRACE MemberDecl* RBRACE
+
+MemberDecl      <- (OVERRIDE / READONLY)? SnakeIdent COLON TypeRef Spacing
+
+
+# ==================================================================
+# 15. COMMENTS AND AI HINTS
+#
+# Three comment forms, all line-based:
+#
+#   // Regular comment — ignored by parser
+#   /// Doc comment — attached to following AST node
+#   ///ai: AI hint — machine-readable metadata for AI agents
+#
+# AI hints are a first-class feature. They allow recipe authors
+# to embed structured guidance that AI systems can use for
+# generation, modification, and reasoning.
+#
+# AI hint examples:
+#   ///ai: critical_for=food_safety reason="chicken must reach 74°C"
+#   ///ai: suggest_alternative=vegan
+#   ///ai: difficulty_note="requires precise timing"
+#   ///ai: substitution egg->flax_egg when=vegan
+# ==================================================================
+
+# Note: '//' !'/' means any two-slash comment that isn't three slashes.
+# '//ai: hint' (two slashes) is a valid regular comment — not an AI hint.
+# AI hints require three slashes: '///ai: hint'. A linter may warn about
+# two-slash ai: comments as probable typos.
+Comment         <- '//' !'/' (!EOL .)* EOL?
+DocComment      <- '///' !'ai:' (!EOL .)* EOL?
+AiHint          <- '///ai:' (!EOL .)* EOL?
+
+
+# ==================================================================
+# 16. UNIT SUFFIXES
+#
+# Closed set of physical unit identifiers. These are NOT regular
+# identifiers — they are recognized only after a numeric literal
+# and a dot separator.
+#
+# Categories:
+#   Temperature: celsius, fahrenheit, kelvin
+#   Mass:        grams, kilograms, ounces, pounds, milligrams
+#   Volume:      ml, liters, cups, tablespoons, teaspoons, fluid_ounces
+#   Time:        seconds, minutes, hours
+#   Length:      cm, mm, inches
+#   Energy:      joules, calories, kilocalories
+#   Power:       watts
+#   Percentage:  percent
+#
+# Abbreviation aliases: ml=milliliters, cm=centimeters, mm=millimeters
+#
+# ORDERING: Longer suffixes come before shorter ones that share a
+# prefix, preventing partial matches in PEG ordered choice.
+# ==================================================================
+
+UNIT_SUFFIX     <- 'fahrenheit'
+                 / 'celsius'
+                 / 'kelvin'
+                 / 'milligrams'
+                 / 'milliliters'
+                 / 'millimeters'
+                 / 'kilograms'
+                 / 'kilocalories'
+                 / 'minutes'
+                 / 'tablespoons'
+                 / 'teaspoons'
+                 / 'fluid_ounces'
+                 / 'centimeters'
+                 / 'calories'
+                 / 'seconds'
+                 / 'grams'
+                 / 'ounces'
+                 / 'pounds'
+                 / 'liters'
+                 / 'inches'
+                 / 'joules'
+                 / 'hours'
+                 / 'cups'
+                 / 'watts'
+                 / 'percent'
+                 # Abbreviation aliases — parser maps these to the same
+                 # AST Unit variant as their full forms:
+                 #   ml → Unit::Milliliters
+                 #   cm → Unit::Centimeters
+                 #   mm → Unit::Millimeters
+                 / 'ml'
+                 / 'cm'
+                 / 'mm'
+
+
+# ==================================================================
+# 17. PROCESS TYPES (Informational — checked in semantic analysis)
+#
+# The following process names are recognized by the semantic analyzer.
+# They are syntactically just PascalCase identifiers in the grammar,
+# but the semantic pass validates them against this closed set.
+#
+# Thermal:     Fry, DeepFry, Saute, Boil, Simmer, Steam, Blanch,
+#              Braise, Roast, Bake, Grill, Broil, Smoke, SousVide,
+#              Poach, Caramelize, Toast, Flambe
+# Mechanical:  Cut, Dice, Mince, Julienne, Chiffonade, Crush, Grate,
+#              Blend, Knead, Fold, Whisk, Pound, Peel, Crack
+# Chemical:    Marinate, Brine, Cure, Ferment, Pickle, Emulsify,
+#              Deglaze, Reduce, Dissolve, Leaven
+# Container:   Add, Remove, Transfer, Drain
+# Thermal Ctl: Heat, Cool, Preheat
+# Temporal:    Wait, WaitUntil, Rest
+# Serving:     Serve, Plate, Garnish, Season
+# ==================================================================
+
+
+# ==================================================================
+# 18. LEXICAL PRIMITIVES
+# ==================================================================
+
+# Identifier character classes
+PASCAL          <- [A-Z] [a-zA-Z0-9]*
+SNAKE           <- [a-z] [a-z0-9_]*
+SCREAM          <- [A-Z] [A-Z0-9_] [A-Z0-9_]+
+ID_CHAR         <- [a-zA-Z0-9_]
+
+# Note on SCREAM: requires at least 3 characters (e.g., MAX) to
+# avoid ambiguity with single uppercase letters which are PASCAL.
+# Two-char SCREAMING (e.g., PH) is ambiguous with PascalCase,
+# but this is acceptable as 2-char constants are rare.
+
+
+# ==================================================================
+# 19. KEYWORDS
+#
+# Keywords are identifiers followed by a negative lookahead for
+# ID_CHAR, preventing partial matches (e.g., 'recipe' must not
+# match 'recipes' or 'recipeX').
+# ==================================================================
+
+# Phase 1 keywords
+RECIPE_          <- 'recipe'          !ID_CHAR Spacing
+INGREDIENTS_     <- 'ingredients'     !ID_CHAR Spacing
+EQUIPMENT_       <- 'equipment'       !ID_CHAR Spacing
+STEPS_           <- 'steps'           !ID_CHAR Spacing
+EXPECTED_RESULT_ <- 'expected_result' !ID_CHAR Spacing
+NUTRITION_       <- 'nutrition'       !ID_CHAR Spacing
+PARALLEL_        <- 'parallel'        !ID_CHAR Spacing
+IMPORT_          <- 'import'          !ID_CHAR Spacing
+FROM_            <- 'from'            !ID_CHAR Spacing
+
+# Phase 2+ keywords
+FN_              <- 'fn'              !ID_CHAR Spacing
+LET              <- 'let'             !ID_CHAR Spacing
+CONST            <- 'const'           !ID_CHAR Spacing
+MUT              <- 'mut'             !ID_CHAR Spacing
+RETURN_          <- 'return'          !ID_CHAR Spacing
+IF_              <- 'if'              !ID_CHAR Spacing
+ELSE_            <- 'else'            !ID_CHAR Spacing
+MATCH_           <- 'match'           !ID_CHAR Spacing
+FOR_             <- 'for'             !ID_CHAR Spacing
+WHILE_           <- 'while'           !ID_CHAR Spacing
+IN_              <- 'in'              !ID_CHAR Spacing
+ASYNC_           <- 'async'           !ID_CHAR Spacing
+AWAIT_           <- 'await'           !ID_CHAR Spacing
+EXPORT_          <- 'export'          !ID_CHAR Spacing
+CLASS_           <- 'class'           !ID_CHAR Spacing
+ABSTRACT         <- 'abstract'        !ID_CHAR Spacing
+EXTENDS_         <- 'extends'         !ID_CHAR Spacing
+IMPLEMENTS_      <- 'implements'      !ID_CHAR Spacing
+INTERFACE_       <- 'interface'       !ID_CHAR Spacing
+TRAIT_           <- 'trait'           !ID_CHAR Spacing
+OVERRIDE         <- 'override'        !ID_CHAR Spacing
+READONLY         <- 'readonly'        !ID_CHAR Spacing
+NEW_             <- 'new'             !ID_CHAR Spacing
+
+
+# ==================================================================
+# 20. PUNCTUATION AND OPERATORS
+#
+# Each punctuation token consumes trailing Spacing.
+# Multi-character operators are ordered longest-first to prevent
+# partial matches (e.g., '>=' before '>').
+# ==================================================================
+
+LPAREN          <- '('  Spacing
+RPAREN          <- ')'  Spacing
+LBRACE          <- '{'  Spacing
+RBRACE          <- '}'  Spacing
+LBRACKET        <- '['  Spacing
+RBRACKET        <- ']'  Spacing
+LANGLE          <- '<'  !'=' Spacing
+RANGLE          <- '>'  !'=' Spacing
+COLON           <- ':'  Spacing
+SEMI            <- ';'  Spacing
+COMMA           <- ','  Spacing
+DOT             <- '.'  Spacing
+AT              <- '@'  Spacing
+ASSIGN          <- '='  !'=' Spacing
+
+ARROW           <- '->' Spacing
+FAT_ARROW       <- '=>' Spacing
+
+GREATER_EQ      <- '>=' Spacing
+LESS_EQ         <- '<=' Spacing
+EQUAL_EQ        <- '==' Spacing
+NOT_EQ          <- '!=' Spacing
+GREATER         <- '>'  !'=' Spacing
+LESS            <- '<'  !'=' Spacing
+
+PLUS            <- '+'  Spacing
+MINUS           <- '-'  !'>' Spacing
+STAR            <- '*'  Spacing
+SLASH           <- '/'  !'/' Spacing
+PERCENT         <- '%'  Spacing
+
+
+# ==================================================================
+# 21. SPACING AND STRUCTURE
+#
+# Spacing consumes whitespace, line comments, doc comments, and
+# AI hints. Comments consumed during spacing are collected by
+# the parser and attached to subsequent AST nodes.
+# ==================================================================
+
+# Spacing consumes all whitespace and comments. The parser
+# implementation must collect DocComment and AiHint tokens during
+# Spacing and attach them to the FOLLOWING AST node (RecipeDecl,
+# Step, or IngredientDecl). Regular Comments are discarded.
+# If multiple DocComments/AiHints precede a node, all are attached.
+Spacing         <- (WhiteSpace / Comment / DocComment / AiHint)*
+WhiteSpace      <- [ \t\r\n]+
+EOL             <- '\r\n' / '\n' / '\r'
+EOF             <- !.
+
+
+# ==================================================================
+# 22. GRAMMAR VERIFICATION NOTES
+#
+# The following fixtures MUST parse successfully with this grammar:
+#   tests/fixtures/valid/basic/fried_egg.saffron
+#   tests/fixtures/valid/basic/grilled_steak.saffron
+#   tests/fixtures/valid/basic/boiled_pasta.saffron
+#
+# The following fixtures MUST parse successfully (errors are semantic):
+#   tests/fixtures/invalid/type_errors/fry_water.saffron
+#   tests/fixtures/invalid/type_errors/temp_mismatch.saffron
+#
+# Key parse traces for validation:
+#
+# 1. "180.celsius" → UnitLiteral(180, celsius)
+#    NUMBER: FLOAT fails (no digits after dot), INTEGER matches 180
+#    Then '.' matches, UNIT_SUFFIX matches "celsius", !ID_CHAR ok
+#
+# 2. "2.5.cm" → UnitLiteral(2.5, cm)
+#    NUMBER: FLOAT matches 2.5, then '.' matches, UNIT_SUFFIX "cm"
+#
+# 3. "3.14" → NumericLiteral(3.14)
+#    UnitLiteral fails (no dot+suffix after 3.14)
+#    NumericLiteral: FLOAT matches 3.14
+#
+# 4. "Fry(duration: 3.minutes, target: Doneness.Medium)"
+#    CallExpr: PascalIdent "Fry", ArgList → NamedArgList (first try)
+#    NamedArg "duration: 3.minutes", NamedArg "target: Doneness.Medium"
+#
+# 5. "Heat(pan, to: 180.celsius, using: stove)"
+#    CallExpr: ArgList → NamedArgList fails (pan has no colon)
+#    → MixedArgList: Expr "pan", then NamedArg "to: 180.celsius",
+#      NamedArg "using: stove"
+#
+# 6. "oil.state.temperature >= 170.celsius"
+#    Comparison: ChainExpr "oil.state.temperature" >=
+#                ChainExpr "170.celsius" (via UnitLiteral in PrimaryExpr)
+#
+# 7. "Crack(egg) -> [yolk, white]"
+#    SequentialStep: StepNumber 4, CallExpr "Crack(egg)",
+#    Destructure [yolk, white]
+#
+# 8. ".Chicken" → EnumVariant("Chicken")
+#    '.' + PASCAL "Chicken" + Spacing
+#
+# 9. "Doneness.Medium" → ChainExpr(PascalIdent "Doneness", "Medium")
+#    PrimaryExpr → Identifier "Doneness", then DOT "Medium"
+#
+# ==================================================================
